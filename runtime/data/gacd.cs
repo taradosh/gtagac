@@ -121,6 +121,15 @@ namespace gtagac
                 QueryTriggerInteraction.Ignore);
         }
 
+        public static Vector3 bvel(Rigidbody b)
+        {
+#if UNITY_6000_0_OR_NEWER
+            return b.linearVelocity;
+#else
+            return b.velocity;
+#endif
+        }
+
         public void fall(float dt)
         {
             if (ingnd())

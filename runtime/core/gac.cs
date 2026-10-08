@@ -173,7 +173,7 @@ namespace gtagac
             else if (d.tr != null)
             {
                 p = d.tr.position;
-                v = d.bd != null ? d.bd.velocity : (d.h.n > 0 ? (p - d.h.now) / gactime.dt : Vector3.zero);
+                v = d.bd != null ? gacd.bvel(d.bd) : (d.h.n > 0 ? (p - d.h.now) / gactime.dt : Vector3.zero);
             }
             else
             {

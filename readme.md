@@ -36,6 +36,22 @@ namespace gtagac
 
 ---
 
+## unity versions
+
+| branch | status | notes |
+|---|---|---|
+| 2021.3 lts | tested, build clean | minimum supported, `unity: 2021.3` in `package.json` |
+| 2022.3 lts | supported | same api surface as 2021.3, same code path |
+| 6000.0 and newer | tested, build clean | uses `linearVelocity` through `gacd.bvel` |
+
+tested by compiling against the real unity assemblies of 2021.3.21f1, 6000.3.6f1 and 6000.5.0f1, zero errors and zero warnings on every branch.
+
+the only version dependent code is `gacd.bvel`, which returns `linearVelocity` on unity 6 and `velocity` on older versions. that is required, because `linearVelocity` does not exist before unity 6 and `velocity` is deprecated on unity 6.
+
+no reflection, no conditional compilation around the checks themselves.
+
+---
+
 ## installation
 
 unity package manager, add package from git url:
