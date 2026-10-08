@@ -1,0 +1,16 @@
+{
+    "name": "gtagac.smp",
+    "rootNamespace": "gtagac.smp",
+    "references": [
+        "gtagac"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

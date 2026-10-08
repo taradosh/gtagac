@@ -1,0 +1,11 @@
+* text=auto eol=lf
+
+*.cs text diff=csharp
+*.md text
+*.json text
+*.asmdef text
+
+*.png binary
+*.jpg binary
+*.unity binary
+*.meta binary
