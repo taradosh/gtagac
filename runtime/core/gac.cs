@@ -54,6 +54,7 @@ namespace gtagac
             reg(new gacvel());
             reg(new gacarm());
             reg(new gacpos());
+            reg(new gaccon());
             reg(new gacrat());
             reg(new gacenv());
 

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace gtagac
@@ -29,6 +30,7 @@ namespace gtagac
         public static float burst = 1.35f;
         public static float actw = 0.6f;
         public static float minid = 0.008f;
+        public static float maxid = 0.15f;
         public static float grav = 9.81f;
 
         public static float gtol = 2f;
@@ -36,6 +38,9 @@ namespace gtagac
         public static float hov = 0.5f;
         public static float maxacc = 200f;
         public static float swgsp = 2f;
+
+        public static float conacc = 60f;
+        public static float consmp = 3f;
 
         public static float grdoff = 0.35f;
         public static float grdlen = 1.2f;
@@ -55,6 +60,7 @@ namespace gtagac
         public static bool cp = true;
         public static bool cr = true;
         public static bool ce = true;
+        public static bool cc = true;
 
         public static bool dbg = false;
         public static bool dbgf = false;
@@ -83,14 +89,50 @@ namespace gtagac
 
         public static float hash()
         {
-            float h = maxspeed * 3f + maxvel * 5f + tpd * 7f + maxjmp * 11f + maxair * 13f;
-            h += maxhand * 17f + fth * 19f + kth * 23f + bth * 29f + decay * 31f;
-            h += ivl * 37f + grav * 41f + grdlen * 43f + maxupd * 47f + btmp * 53f;
-            h += swgsp * 59f + maxacc * 61f + maxair * 67f + maxjmp * 71f;
-            h += grdmask * 0.000001f + (cs ? 1f : 0f) + (ct ? 2f : 0f) + (cj ? 4f : 0f);
-            h += (cf ? 8f : 0f) + (cg ? 16f : 0f) + (cv ? 32f : 0f) + (ca ? 64f : 0f);
-            h += (cp ? 128f : 0f) + (cr ? 256f : 0f) + (ce ? 512f : 0f);
+            float[] a =
+            {
+                maxspeed, maxvel, tpd, maxjmp, maxair, maxhand, maxupd,
+                fth, kth, bth, bcf, maxwarn, decay,
+                ivl, burst, grav, gtol, gmin, hov, maxacc, swgsp,
+                grdoff, grdlen, grdmask, btmp,
+                smp, tps, grdchk ? 1f : 0f,
+                cs ? 1f : 0f, ct ? 1f : 0f, cj ? 1f : 0f, cf ? 1f : 0f,
+                cg ? 1f : 0f, cv ? 1f : 0f, ca ? 1f : 0f, cp ? 1f : 0f,
+                cr ? 1f : 0f, ce ? 1f : 0f,
+                pun ? 1f : 0f, pwn ? 1f : 0f, pkk ? 1f : 0f,
+                pkb ? 1f : 0f, pbm ? 1f : 0f, bper ? 1f : 0f,
+                devby ? 1f : 0f, loc ? 1f : 0f, allowsc ? 1f : 0f,
+                wlst ? 1f : 0f
+            };
+
+            float h = 2166136261f;
+
+            for (int i = 0; i < a.Length; i++)
+            {
+                int b = BitConverter.SingleToInt32Bits(a[i]);
+                h = mx(h + b);
+            }
+
+            int n = wl != null ? wl.Length : 0;
+
+            for (int i = 0; i < n; i++)
+            {
+                string s = wl[i] ?? "";
+                for (int j = 0; j < s.Length; j++)
+                {
+                    h = mx(h + s[j]);
+                }
+                h = mx(h + 10);
+            }
+
             return h;
+        }
+
+        static float mx(float v)
+        {
+            const float m = 16777619f;
+            v *= m;
+            return v - Mathf.Floor(v / m) * m;
         }
 
         public static bool sw(string n)
@@ -107,6 +149,7 @@ namespace gtagac
                 case "position": cp = !cp; return cp;
                 case "rate": cr = !cr; return cr;
                 case "env": ce = !ce; return ce;
+                case "consistency": cc = !cc; return cc;
             }
             return false;
         }
@@ -125,6 +168,7 @@ namespace gtagac
                 case "position": return cp;
                 case "rate": return cr;
                 case "env": return ce;
+                case "consistency": return cc;
             }
             return false;
         }
@@ -155,6 +199,7 @@ namespace gtagac
             burst = 1.35f;
             actw = 0.6f;
             minid = 0.008f;
+            maxid = 0.15f;
             grav = 9.81f;
             smp = 3;
             tps = 2;
@@ -163,6 +208,8 @@ namespace gtagac
             hov = 0.5f;
             maxacc = 200f;
             swgsp = 2f;
+            conacc = 60f;
+            consmp = 3f;
             grdoff = 0.35f;
             grdlen = 1.2f;
             grdmask = -1;
@@ -170,7 +217,7 @@ namespace gtagac
             btmp = 1440f;
             allowsc = false;
             cs = true; ct = true; cj = true; cf = true; cg = true;
-            cv = true; ca = true; cp = true; cr = true; ce = true;
+            cv = true; ca = true; cp = true; cr = true; ce = true; cc = true;
             dbg = false; dbgf = false; dbgi = 0.25f;
             srv = false; loc = true; devby = true;
             pun = true; pwn = true; pkk = true; pkb = true; pbm = true;

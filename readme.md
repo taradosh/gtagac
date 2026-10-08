@@ -22,10 +22,12 @@ namespace gtagac
 | velocity | `gacvel` | 2 | horizontal velocity, vertical velocity and velocity deltas validated separately |
 | arm | `gacarm` | 1 | vr hand speed and hand teleport, only active when hand transforms are provided |
 | position | `gacpos` | 2 | history buffer analysis, spikes against the local mean, no single frame verdict |
+| consistency | `gaccon` | 2 | acceleration derived from reported positions, catches position writes with a clean velocity |
 | rate | `gacrat` | 2 | movement update flooding and packet spam protection |
 | env | `gacenv` | 4 | time scale tampering, suspicious delta time, local movement parameter tampering |
 
 - flag system with per check weights, decay and confidence aggregation
+- FNV style hash over the whole config, so any runtime change of limits is detected
 - punishments, warning, kick, temporary ban, permanent ban, each independently switchable
 - whitelist, development builds, admins, trusted players
 - events, `onflag`, `onwarning`, `onkick`, `onban`
@@ -137,9 +139,12 @@ everything lives in `gacp`.
 | `gmin` | 0.2 | grace before the gravity check |
 | `hov` | 0.5 | vertical speed considered hover |
 | `swgsp` | 2 | hand speed considered swinging |
+| `conacc` | 60 | max acceleration derived from positions, m over s2 |
+| `consmp` | 3 | confirmations required by the consistency check |
+| `maxid` | 0.15 | max interval between samples used by the consistency check |
 | `grdchk` | true | ground probe in `FixedUpdate` |
 | `grdoff` `grdlen` `grdmask` | 0.35, 1.2, all | ground probe parameters |
-| `cs` `ct` `cj` `cf` `cg` `cv` `ca` `cp` `cr` `ce` | true | per check enable |
+| `cs` `ct` `cj` `cf` `cg` `cv` `ca` `cp` `cr` `ce` `cc` | true | per check enable |
 | `pun` `pwn` `pkk` `pkb` `pbm` | true | punishment switches |
 | `bper` | false | ban permanent instead of temporary |
 | `dbg` `dbgf` `dbgi` | false, false, 0.25 | debug output, force debug in release, debug interval |
@@ -341,7 +346,8 @@ gtagac/
     gtagac.asmdef
     core/        gac.cs gacp.cs gacf.cs gacper.cs gacr.cs gacev.cs gacm.cs gacgui.cs gacdw.cs
     checks/      gaccheck.cs gacspd.cs gactp.cs gacjmp.cs gacfly.cs
-                 gacgrav.cs gacvel.cs gacarm.cs gacpos.cs gacrat.cs gacenv.cs
+                 gacgrav.cs gacvel.cs gacarm.cs gacpos.cs gaccon.cs
+                 gacrat.cs gacenv.cs
     data/        gacd.cs gacv.cs
     util/        gaclog.cs gactime.cs gacmath.cs
     net/         igacnet.cs

@@ -1,5 +1,13 @@
 # changelog
 
+## 1.0.1
+
+hardening
+
+- new check `gaccon`, acceleration derived from reported positions, catches position writes with a clean velocity
+- `gacp.hash` rewritten as an FNV style rolling hash over every config field, previously a fixed polynomial that could be reproduced by hand
+- confidence aggregation changed from a mean to a saturating sum, so several simultaneous violations compound instead of averaging out
+
 ## 1.0.0
 
 initial release

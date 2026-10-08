@@ -1,6 +1,6 @@
 {
     "name": "com.gtagac.anticheat",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "displayName": "gtag ac",
     "description": "lightweight server authoritative anti cheat for unity vr games with gorilla locomotion",
     "unity": "2021.3",

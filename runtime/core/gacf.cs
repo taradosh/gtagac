@@ -120,14 +120,17 @@ namespace gtagac
         public float conf()
         {
             float s = 0f;
-            int n = 0;
+
             for (int i = 0; i < used; i++)
             {
                 if (e[i].n <= 0) continue;
-                s += e[i].cf;
-                n++;
+                float sc = gacmath.cl01(e[i].cf * (0.7f + 0.3f * gacmath.cl01(e[i].n / 3f)));
+                s += sc;
             }
-            return n > 0 ? gacmath.cl01(s / n + (n > 1 ? 0.1f * (n - 1) : 0f)) : 0f;
+
+            if (s <= 0f) return 0f;
+
+            return gacmath.cl01(1f - Mathf.Exp(-s));
         }
 
         public int act(float t, float w)

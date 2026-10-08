@@ -9,6 +9,7 @@ namespace gtagac
         public readonly Vector3[] p = new Vector3[cap];
         public readonly Vector3[] v = new Vector3[cap];
         public readonly float[] t = new float[cap];
+        public readonly Vector3[] a = new Vector3[cap];
 
         public int n;
         public int hd;
@@ -23,6 +24,11 @@ namespace gtagac
             get { return v[hd]; }
         }
 
+        public Vector3 acc
+        {
+            get { return a[hd]; }
+        }
+
         public void clear()
         {
             for (int i = 0; i < cap; i++)
@@ -30,6 +36,7 @@ namespace gtagac
                 p[i] = Vector3.zero;
                 v[i] = Vector3.zero;
                 t[i] = 0f;
+                a[i] = Vector3.zero;
             }
             n = 0;
             hd = 0;
@@ -37,11 +44,25 @@ namespace gtagac
 
         public void add(Vector3 pos, Vector3 vv, float ts)
         {
+            if (n > 0)
+            {
+                float d = ts - t[hd];
+                a[hd] = d > gacp.minid ? (vv - v[hd]) / d : a[hd];
+            }
+
             hd = (hd + 1) % cap;
             p[hd] = pos;
             v[hd] = vv;
             t[hd] = ts;
             if (n < cap) n++;
+        }
+
+        public Vector3 aat(int i)
+        {
+            if (i < 0 || i >= n) return a[hd];
+            int k = hd - i;
+            if (k < 0) k += cap;
+            return a[k];
         }
 
         public Vector3 at(int i)

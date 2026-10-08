@@ -177,6 +177,7 @@ namespace gtagac
         public float pos = 2f;
         public float rat = 2f;
         public float env = 4f;
+        public float con = 2f;
 
         public float of(string n)
         {
@@ -192,6 +193,7 @@ namespace gtagac
                 case "position": return pos;
                 case "rate": return rat;
                 case "env": return env;
+                case "consistency": return con;
             }
             return 1f;
         }
@@ -210,6 +212,7 @@ namespace gtagac
                 case "position": pos = v; break;
                 case "rate": rat = v; break;
                 case "env": env = v; break;
+                case "consistency": con = v; break;
             }
         }
     }
