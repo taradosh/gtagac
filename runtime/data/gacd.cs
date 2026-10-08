@@ -106,8 +106,19 @@ namespace gtagac
             if (grnd) return true;
             if (clb) return true;
             if (swm) return true;
-            if (bd != null && bd.IsGrounded()) return true;
+            if (bd != null && gacp.grdchk && gacgrd(bd)) return true;
             return false;
+        }
+
+        public static bool gacgrd(Rigidbody b)
+        {
+            Vector3 p = b.worldCenterOfMass;
+            return Physics.Raycast(
+                p + Vector3.up * gacp.grdoff,
+                Vector3.down,
+                gacp.grdlen,
+                gacp.grdmask,
+                QueryTriggerInteraction.Ignore);
         }
 
         public void fall(float dt)

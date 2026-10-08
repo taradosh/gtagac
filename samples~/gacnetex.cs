@@ -82,7 +82,7 @@ namespace gtagac.smp
             if (root == null) return;
             Vector3 p = root.position;
             Vector3 v = body != null ? body.velocity : Vector3.zero;
-            bool g = body != null ? body.IsGrounded() : true;
+            bool g = body != null ? gacd.gacgrd(body) : true;
             net.set(p, v, g);
         }
 
