@@ -2,7 +2,8 @@ namespace gtagac
 {
     public sealed class gacgrav : gacc
     {
-        int cnt;
+        readonly float[] dev = new float[gacp.slots];
+        readonly int[] cnt = new int[gacp.slots];
 
         public gacgrav()
         {
@@ -13,37 +14,37 @@ namespace gtagac
 
         public override void tick(gacd d, float dt)
         {
+            int x = d.ind;
+
+            if (x < 0 || x >= gacp.slots) return;
             if (d.ingnd() || d.clb || d.swm || d.grb) return;
             if (d.air < gacp.gmin) return;
             if (d.swg()) return;
 
             float vy = d.h.vel.y;
             float ex = d.gy;
+            float hsp = gacmath.flen(d.h.now - d.h.at(1)) / gacmath.maxs(d.h.dlt(0), gacp.minid);
 
-            if (ex > gacp.gtol && vy > ex + gacp.gtol)
+            if (hsp > gacp.swgsp) return;
+
+            if (ex <= gacp.gtol || vy <= ex + gacp.gtol)
             {
-                float cf = gacmath.cl01(gacmath.over(vy - ex, gacp.maxvel) * 0.5f);
-                if (cf > 0.15f)
-                {
-                    cnt = 0;
-                    flg(d, cf, "hang " + vy.ToString("0.0"));
-                    return;
-                }
+                cnt[x] = 0;
+                return;
             }
 
-            if (d.air > gacp.maxair * 0.5f && vy < gacp.gtol && d.gy < -gacp.maxvel * 0.5f)
-            {
-                cnt++;
-                if (cnt >= 3)
-                {
-                    cnt = 0;
-                    flg(d, 0.4f, "nograv");
-                }
-            }
-            else
-            {
-                cnt = 0;
-            }
+            dev[x] = gacmath.damp(dev[x], vy - ex, 8f, dt);
+            cnt[x]++;
+
+            if (cnt[x] * dt < gacp.grvhold) return;
+
+            cnt[x] = 0;
+
+            float cf = gacmath.cl01(gacmath.over(dev[x], gacp.maxvel) * 0.5f);
+
+            if (cf < 0.15f) return;
+
+            flg(d, cf, dev[x], "hang", "0.0");
         }
     }
 }

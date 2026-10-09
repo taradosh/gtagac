@@ -9,6 +9,8 @@ namespace gtagac
         public float kickt;
         public float bant;
         public bool sent;
+        public float lgw;
+        public int lgn;
 
         public void reset()
         {
@@ -19,6 +21,8 @@ namespace gtagac
             kickt = 0f;
             bant = 0f;
             sent = false;
+            lgw = -999f;
+            lgn = 0;
         }
     }
 }

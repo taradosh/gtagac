@@ -1,11 +1,11 @@
+using UnityEngine;
+
 namespace gtagac
 {
     public sealed class gacpos : gacc
     {
-        const int cap = 8;
-
-        readonly float[] hs = new float[gacp.slots * cap];
-        readonly int[] hd = new int[gacp.slots];
+        readonly float[] err = new float[gacp.slots];
+        readonly float[] cnt = new float[gacp.slots];
 
         public gacpos()
         {
@@ -17,46 +17,41 @@ namespace gtagac
         public override void tick(gacd d, float dt)
         {
             int x = d.ind;
+
             if (x < 0 || x >= gacp.slots) return;
             if (d.h.n < 2) return;
             if (d.grb) return;
 
             float dlt = d.h.dlt(0);
+
             if (dlt <= gacp.minid) return;
+            if (dlt > gacp.maxid) return;
 
-            float s = gacmath.len(d.h.now - d.h.at(1)) / dlt;
+            Vector3 vel = d.h.vel;
 
-            int o = x * cap;
-            int h = (hd[x] + 1) % cap;
-            hd[x] = h;
-            hs[o + h] = s;
+            Vector3 step = vel * dlt;
 
-            if (s <= gacp.maxspeed * gacp.burst) return;
+            Vector3 e = d.h.now - d.h.at(1) - step;
 
-            int k = gacp.wnd;
-            int ov = 0;
-            float av = 0f;
-            float mx = 0f;
+            float m = gacmath.len(e);
 
-            for (int i = 0; i < k; i++)
-            {
-                int j = h - i;
-                if (j < 0) j += cap;
-                float v = hs[o + j];
-                av += v;
-                if (v > mx) mx = v;
-                if (v > gacp.maxspeed) ov++;
-            }
+            err[x] = gacmath.damp(err[x], m, 10f, dt);
 
-            av /= k;
+            float tol = (gacp.maxspeed + gacp.maxvel) * dlt + d.slack;
 
-            if (ov < gacp.smp) return;
-            if (mx < gacp.tpd * 0.5f) return;
+            if (err[x] <= tol) return;
 
-            float cf = gacmath.cl01(gacmath.over(av, gacp.maxspeed) * (float)ov / k);
-            if (cf < 0.15f) return;
+            cnt[x] += dt;
 
-            flg(d, cf, "pos " + mx.ToString("0.0"));
+            if (cnt[x] < gacp.poshold) return;
+
+            float cf = gacmath.cl01(gacmath.over(err[x], tol) * 0.5f);
+
+            if (cf < 0.2f) return;
+
+            cnt[x] = 0f;
+
+            flg(d, cf, err[x], "pverr", "0.00");
         }
     }
 }

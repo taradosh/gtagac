@@ -37,7 +37,7 @@ namespace gtagac
             float cf = gacmath.cl01(gacmath.over(r, gacp.maxupd) * 0.5f);
             if (cf < 0.2f) return;
 
-            flg(d, cf, "rate " + r.ToString("0"));
+            flg(d, cf, r, "rate", "0");
         }
     }
 }

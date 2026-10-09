@@ -23,7 +23,9 @@ namespace gtagac
                 return;
             }
 
-            float jv = Mathf.Abs(vy);
+            if (vy <= 0f) return;
+
+            float jv = vy;
 
             if (jv <= gacp.maxjmp) return;
 
@@ -42,7 +44,7 @@ namespace gtagac
 
             d.jy = vy;
 
-            flg(d, c1, "jmp " + sp.ToString("0.0"));
+            flg(d, c1, sp, "jmp", "0.0");
         }
     }
 }

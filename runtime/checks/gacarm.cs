@@ -79,7 +79,7 @@ namespace gtagac
             float cf = gacmath.cl01(gacmath.over(a, gacp.maxhand) * (float)ov / k);
             if (cf < 0.15f) return;
 
-            flg(d, cf, "hand " + a.ToString("0.0"));
+            flg(d, cf, a, "hand", "0.0");
         }
     }
 }

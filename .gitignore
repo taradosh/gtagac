@@ -11,11 +11,16 @@
 .vs/
 .idea/
 .vscode/
-*.csproj
 *.sln
 *.user
 *.unityproj
 *.booproj
+
+# the headless test runner is committed on purpose, readme tells users to run it
+# only its build output is ignored
+dev/bin/
+dev/obj/
+dev/TestResults/
 
 *.apk
 *.aab

@@ -35,6 +35,8 @@ namespace gtagac
             gactime.init();
             if (store == null) store = new gacbm();
 
+            gacs.bind(logsub);
+
             loc = tr != null;
 
             me = new gacd("me", 0);
@@ -57,6 +59,7 @@ namespace gtagac
             reg(new gaccon());
             reg(new gacrat());
             reg(new gacenv());
+            reg(new gacnc());
 
             run = true;
             gaclog.i("init v" + ver + " loc=" + loc);
@@ -79,6 +82,8 @@ namespace gtagac
         }
 
         public static igacbanstore store;
+
+        static readonly gaclogsub logsub = new gaclogsub();
 
         public static void reg(gacc c)
         {
@@ -108,6 +113,8 @@ namespace gtagac
             run = false;
             ply.Clear();
             gacr.clr();
+            gaclog.clr();
+            gacpred.clr();
             me = null;
             net = null;
             acc = 0f;
@@ -221,38 +228,97 @@ namespace gtagac
 
         public static void upd(string id, Vector3 p, Vector3 v, bool g)
         {
-            gacd d = find(id);
+            gacd d = slot(id);
 
-            if (d == null)
-            {
-                if (ply.Count >= gacp.slots) return;
-                d = new gacd(id, ply.Count);
-                d.srv = true;
-                d.reset();
-                ply.Add(d);
-            }
+            if (d == null) return;
+
+            d.sq++;
+
+            upd2(d, p, v, g, d.sq, 0.0);
+        }
+
+        public static bool upd2(string id, Vector3 p, Vector3 v, bool g, int seq, double ct)
+        {
+            gacd d = slot(id);
+
+            if (d == null) return false;
+
+            return upd2(d, p, v, g, seq, ct);
+        }
+
+        public static bool upd2(gacd d, Vector3 p, Vector3 v, bool g, int seq, double ct)
+        {
+            if (d == null) return false;
+
+            if (!gacsq.acc(d, seq, ct, gactime.now)) return false;
 
             if (d.net == null) d.net = net;
-            if (d.ind >= gacp.slots) return;
+            if (d.ind >= gacp.slots) return false;
+
+            d.grnd = g;
+
+            if (gacp.pr && d.h.n > 0)
+            {
+                float pdt = gactime.now - d.h.tat(0);
+
+                gacpred.step(d, p, v, pdt);
+            }
+
+            d.push(p, v, gactime.now);
+            d.upd += 1f;
+
+            if (skip(d)) return false;
+
+            evl(d);
+
+            return true;
+        }
+
+        static gacd slot(string id)
+        {
+            gacd d = find(id);
+
+            if (d != null) return d;
+
+            if (ply.Count >= gacp.slots) return null;
+
+            d = new gacd(id, ply.Count);
+            d.srv = true;
+            d.reset();
+            ply.Add(d);
 
             if (!d.chkd)
             {
                 d.chkd = true;
+
                 if (store != null && store.has(id))
                 {
                     d.bnd = true;
                     gacs.ban(new gace(id, "store", "banned", 1f, 1, 0, gactime.now));
-                    return;
+                    return null;
                 }
             }
 
-            d.grnd = g;
-            d.push(p, v, gactime.now);
-            d.upd += 1f;
+            return d;
+        }
 
-            if (skip(d)) return;
+        public static void ping(string id, float rtt)
+        {
+            gacd d = find(id);
 
-            evl(d);
+            if (d != null) gacsq.ping(d, rtt);
+        }
+
+        public static int dropped(string id)
+        {
+            gacd d = find(id);
+            return d == null ? 0 : d.drp;
+        }
+
+        public static int outoforder(string id)
+        {
+            gacd d = find(id);
+            return d == null ? 0 : d.ol;
         }
 
         public static bool st(string id)
@@ -341,6 +407,7 @@ namespace gtagac
             gacd d = find(id);
 
             gacs.kick(new gace(id, "kick", r, 1f, 1, gacr.flgof(id), gactime.now));
+            gaclog.k(gaclog.lkick, id, "kick", r, 1f, gacr.flgof(id));
 
             if (d == null) return;
 
@@ -353,6 +420,7 @@ namespace gtagac
             gacd d = find(id);
 
             gacs.ban(new gace(id, "ban", r, 1f, 1, gacr.flgof(id), gactime.now));
+            gaclog.k(gaclog.lban, id, "ban", r, 1f, gacr.flgof(id));
 
             if (store != null) store.add(id, r, m);
 

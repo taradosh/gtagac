@@ -15,7 +15,7 @@ namespace gtagac
             if (d.grb) return;
 
             int k = gacp.wnd;
-            float lim = gacp.maxspeed;
+            float lim = gacp.maxspeed + d.sspd;
 
             float av = 0f;
 
@@ -45,7 +45,7 @@ namespace gtagac
 
             float cf = gacmath.cl01(ex * (float)ov / k);
 
-            flg(d, cf, "hspd " + av.ToString("0.0"));
+            flg(d, cf, av, "hspd", "0.0");
         }
     }
 }

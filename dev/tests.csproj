@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>gtagac.tests</AssemblyName>
+    <RootNamespace>gtagac.test</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>CS0649;CS0414;CS0169;CS0067;CS8981;CS8600;CS8602;CS8603;CS8604;CS8618;CS8619;CS8625;CS8765</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GTOBJ)' != ''">
+    <BaseIntermediateOutputPath>$(GTOBJ)obj\</BaseIntermediateOutputPath>
+    <OutputPath>$(GTOBJ)bin\</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="UnityStub.cs" />
+    <Compile Include="..\runtime\**\*.cs" Exclude="..\runtime\core\gacm.cs;..\runtime\core\gacgui.cs;..\runtime\core\gacdw.cs" />
+    <Compile Include="..\Tests\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="NUnit.Framework" />
+  </ItemGroup>
+
+</Project>

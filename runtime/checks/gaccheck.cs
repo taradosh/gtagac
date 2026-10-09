@@ -20,6 +20,8 @@ namespace gtagac
         public float weight = 1f;
         public float cooldown = 0.5f;
 
+        protected static readonly float[] zer = new float[gacp.slots];
+
         public string name
         {
             get { return nm; }
@@ -59,9 +61,21 @@ namespace gtagac
 
         public abstract void tick(gacd d, float dt);
 
+        public bool can(gacd d, float cf)
+        {
+            return gacr.canflg(d, this, cf);
+        }
+
         public void flg(gacd d, float cf, string r)
         {
             gacr.flg(d, this, cf, r);
+        }
+
+        public void flg(gacd d, float cf, float a, string pre, string fmt)
+        {
+            if (!can(d, cf)) return;
+
+            flg(d, cf, pre + gacn.f(a, fmt));
         }
     }
 }

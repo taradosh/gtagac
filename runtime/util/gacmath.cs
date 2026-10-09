@@ -67,5 +67,21 @@ namespace gtagac
         {
             return a < 0f ? -a : a;
         }
+
+        public static Vector3 clv(Vector3 v, float m)
+        {
+            float l = len(v);
+
+            if (l <= m || l <= eps) return v;
+
+            return v * (m / l);
+        }
+
+        public static Vector3 damp3(Vector3 cur, Vector3 tgt, float k, float dt)
+        {
+            float t = 1f - Mathf.Exp(-k * dt);
+
+            return cur + (tgt - cur) * t;
+        }
     }
 }

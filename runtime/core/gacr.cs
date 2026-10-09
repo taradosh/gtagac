@@ -23,10 +23,18 @@ namespace gtagac
         {
             gacper p;
             if (pp.TryGetValue(id, out p)) return p;
+
+            if (lk.Count >= gacp.slots)
+            {
+                string old = lk[0];
+
+                lk.RemoveAt(0);
+                pp.Remove(old);
+            }
+
             p = new gacper();
             pp.Add(id, p);
             lk.Add(id);
-            if (lk.Count > gacp.slots) pp.Remove(lk[0]);
             return p;
         }
 
@@ -70,17 +78,54 @@ namespace gtagac
             return rk[i];
         }
 
+        public static bool evok(string id)
+        {
+            if (!gacp.evon) return true;
+
+            gacper p;
+
+            if (!pp.TryGetValue(id, out p)) return false;
+
+            if (p.f.conf() < gacp.evcf) return false;
+
+            return p.f.ind(gactime.now, gacp.evwin) >= gacp.evmin;
+        }
+
+        public static int evind(string id)
+        {
+            gacper p;
+
+            if (!pp.TryGetValue(id, out p)) return 0;
+
+            return p.f.ind(gactime.now, gacp.evwin);
+        }
+
+        public static bool canflg(gacd d, gaccheck c, float cf)
+        {
+            if (d == null || c == null) return false;
+            if (!c.en) return false;
+            if (cf <= 0f) return false;
+
+            gacper p;
+
+            if (!pp.TryGetValue(d.id, out p))
+            {
+                get(d.id);
+                return true;
+            }
+
+            if (p.sent) return false;
+
+            return p.f.cdn(c.name, gactime.now);
+        }
+
         public static void flg(gacd d, gaccheck c, float cf, string r)
         {
-            if (d == null || c == null) return;
-            if (!c.en) return;
-            if (cf <= 0f) return;
+            if (!canflg(d, c, cf)) return;
 
             gacper p = get(d.id);
-            if (p.sent) return;
 
             float t = gactime.now;
-            if (!p.f.cdn(c.name, t)) return;
 
             int n = 1;
             float w = c.wgt;
@@ -90,35 +135,55 @@ namespace gtagac
             float cs = p.f.conf();
 
             gace e = new gace(d.id, c.name, r, cf, n, tot, t);
+
             gacs.flag(e);
-            gaclog.f(d, c.name, cf, tot);
+
+            if (gacp.dbgo()) gaclog.f(d, c.name, cf, tot);
 
             if (tot >= gacp.fth && p.warn < gacp.maxwarn && gacp.pun && gacp.pwn)
             {
                 p.warn++;
                 gacs.warning(new gace(d.id, c.name, r, cs, p.warn, tot, t));
-                gaclog.w(d.id + " warning " + p.warn);
+
+                if (gacp.dbgo()) gaclog.w(d.id + " warning " + p.warn);
             }
 
             if (gacp.pun && gacp.pkk && tot >= gacp.kth && p.kick == 0)
             {
-                p.kick++;
-                gacs.kick(new gace(d.id, c.name, r, cs, p.kick, tot, t));
-                gaclog.w(d.id + " kick");
-                if (d.net != null) d.net.kick(r);
-                if (!gacp.srv) p.sent = true;
+                if (!evok(d.id))
+                {
+                    gaclog.k(gaclog.lgate, d.id, c.name, r, cs, tot);
+                }
+                else
+                {
+                    p.kick++;
+                    gacs.kick(new gace(d.id, c.name, r, cs, p.kick, tot, t));
+
+                    if (gacp.dbgo()) gaclog.w(d.id + " kick");
+
+                    if (d.net != null) d.net.kick(r);
+                    if (!gacp.srv) p.sent = true;
+                }
             }
 
             if (gacp.pun && gacp.pkb && (tot >= gacp.bth || cs >= gacp.bcf) && p.ban == 0)
             {
-                p.ban++;
-                float m = gacp.bper ? 0f : gacp.btmp;
-                if (m <= 0f && !gacp.pbm) m = 60f;
-                gacs.ban(new gace(d.id, c.name, r, cs, p.ban, tot, t));
-                gaclog.w(d.id + " ban " + m);
-                if (store != null) store.add(d.id, r, m);
-                if (d.net != null) d.net.ban(r, m);
-                if (!gacp.srv) p.sent = true;
+                if (!evok(d.id))
+                {
+                    gaclog.k(gaclog.lgate, d.id, c.name, r, cs, tot);
+                }
+                else
+                {
+                    p.ban++;
+                    float m = gacp.bper ? 0f : gacp.btmp;
+                    if (m <= 0f && !gacp.pbm) m = 60f;
+                    gacs.ban(new gace(d.id, c.name, r, cs, p.ban, tot, t));
+
+                    if (gacp.dbgo()) gaclog.w(d.id + " ban " + m);
+                    if (store != null) store.add(d.id, r, m);
+                    if (d.net != null) d.net.ban(r, m);
+                    if (!gacp.srv) p.sent = true;
+                }
             }
         }
 
@@ -178,6 +243,7 @@ namespace gtagac
         public float rat = 2f;
         public float env = 4f;
         public float con = 2f;
+        public float nc = 3f;
 
         public float of(string n)
         {
@@ -194,6 +260,7 @@ namespace gtagac
                 case "rate": return rat;
                 case "env": return env;
                 case "consistency": return con;
+                case "noclip": return nc;
             }
             return 1f;
         }
@@ -213,6 +280,7 @@ namespace gtagac
                 case "rate": rat = v; break;
                 case "env": env = v; break;
                 case "consistency": con = v; break;
+                case "noclip": nc = v; break;
             }
         }
     }

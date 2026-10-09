@@ -22,7 +22,7 @@ namespace gtagac
 
             float sp = dl / dlt;
 
-            float lim = gacp.tpd;
+            float lim = gacp.tpd + gacp.maxvel * dlt + d.slack;
 
             float cf = 0f;
 
@@ -52,7 +52,7 @@ namespace gtagac
 
             d.hsp = sp;
 
-            flg(d, cf, "dist " + dl.ToString("0.00"));
+            flg(d, cf, dl, "dist", "0.00");
         }
     }
 }

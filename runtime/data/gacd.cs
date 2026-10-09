@@ -35,6 +35,25 @@ namespace gtagac
         public float upd;
         public float grc;
 
+        public int sq;
+        public int drp;
+        public int ol;
+        public int lost;
+        public int sus;
+        public bool sqo;
+        public double off;
+        public double lc;
+        public float lt;
+        public float lst;
+        public float jit;
+        public float gl;
+        public int gap;
+        public float lag;
+        public float pin;
+        public float slack;
+        public float sspd;
+        public float unc;
+
         public bool grnd;
         public bool jmp;
         public bool clb;
@@ -63,6 +82,23 @@ namespace gtagac
             jy = 0f;
             upd = 0f;
             grc = 0f;
+            sq = 0;
+            drp = 0;
+            ol = 0;
+            lost = 0;
+            sus = 0;
+            sqo = false;
+            off = 0.0;
+            lc = 0.0;
+            lt = 0f;
+            lst = 0f;
+            jit = 0f;
+            gl = 0f;
+            lag = 0f;
+            pin = 0f;
+            slack = 0f;
+            sspd = 0f;
+            unc = 0f;
             grnd = true;
             jmp = false;
             clb = false;
@@ -93,6 +129,12 @@ namespace gtagac
             if (grb) return true;
             if (clb) return true;
             if (hs > gacp.swgsp) return true;
+
+            float dt = h.dlt(0);
+
+            if (dt > gacp.minid && dt < gacp.maxid &&
+                gacmath.flen(h.now - h.at(1)) / dt > gacp.swgsp) return true;
+
             return false;
         }
 

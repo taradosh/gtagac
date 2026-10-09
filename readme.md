@@ -23,17 +23,24 @@ namespace gtagac
 | arm | `gacarm` | 1 | vr hand speed and hand teleport, only active when hand transforms are provided |
 | position | `gacpos` | 2 | history buffer analysis, spikes against the local mean, no single frame verdict |
 | consistency | `gaccon` | 2 | acceleration derived from reported positions, catches position writes with a clean velocity |
+| noclip | `gacnc` | 3 | the segment between two reported samples crosses solid geometry, needs **server side colliders** |
 | rate | `gacrat` | 2 | movement update flooding and packet spam protection |
 | env | `gacenv` | 4 | time scale tampering, suspicious delta time, local movement parameter tampering |
 
 - flag system with per check weights, decay and confidence aggregation
 - FNV style hash over the whole config, so any runtime change of limits is detected
 - punishments, warning, kick, temporary ban, permanent ban, each independently switchable
+- optional evidence gate, a punishment waits for **independent** checks to agree
+- sequence numbers, timestamps and clock offset learning, with replay and stale rejection
+- network aware tolerances, ping, jitter and packet loss widen the limits automatically
+- optional server side prediction `gacpred` with bounded, non snapping correction
+- ring buffered structured log `gaclog`, exportable as text or csv through `gacdiag`
 - whitelist, development builds, admins, trusted players
-- events, `onflag`, `onwarning`, `onkick`, `onban`
+- events, `onflag`, `onwarning`, `onkick`, `onban`, plus alloc free `igace` sinks
 - custom checks through `gaccheck` and `gacc`, one class plus one `gac.reg()` line
 - networking abstraction through `igacnet`, core is framework agnostic
 - ban storage abstraction `igacbanstore`, in memory store for tests, file store for the server
+- 211 automated tests, nunit only as a dev dependency, never in the runtime assembly
 - debug overlay and debug logging, silent in release builds
 
 ---
@@ -59,7 +66,7 @@ no reflection, no conditional compilation around the checks themselves.
 unity package manager, add package from git url:
 
 ```
-https://github.com/youraccount/gtagac.git?path=/
+https://github.com/taradosh/gtagac.git?path=/
 ```
 
 or copy the folder `runtime` into your project, for example `assets/plugins/gtagac`.
@@ -116,7 +123,7 @@ everything lives in `gacp`.
 
 | field | default | meaning |
 |---|---|---|
-| `maxspeed` | 12 | max horizontal player speed, m over s |
+| `maxspeed` | 18 | max horizontal player speed, m over s. the fastest physically consistent swing on a 6 to 16 m rope peaks below this, see `Tests/rope.cs` |
 | `maxvel` | 20 | max velocity magnitude, m over s |
 | `tpd` | 3 | max teleport distance per check interval, m |
 | `maxjmp` | 9 | max jump impulse, m over s |
@@ -154,6 +161,115 @@ everything lives in `gacp`.
 | `allowsc` | false | allow time scale changes |
 | `btmp` | 1440 | temporary ban minutes |
 
+### network tolerances
+
+these widen every limit automatically as the link gets worse. they adapt per player, so one slow player never loosens the rest.
+
+| field | default | meaning |
+|---|---|---|
+| `stale` | 0.35 | max client timestamp lag before the packet is rejected, s, `strict` only |
+| `fut` | 0.5 | max timestamp from the future, s, `strict` only |
+| `seqwin` `seqgap` | 32, 8 | sequence window, gap that counts as suspicion |
+| `jitter` | 0.05 | weight of measured jitter in the uncertainty budget |
+| `loss` | 0.1 | weight of measured packet loss in the uncertainty budget |
+| `netslack` | 1.25 | multiplier on the computed slack |
+| `maxun` | 0.5 | cap on total uncertainty, s |
+| `maxslack` | 6 | cap on the resulting distance slack, m |
+| `pin` | 0 | static ping allowance added to every player, s |
+| `pingmax` | 2 | cap on a measured rtt, s |
+| `strict` | false | reject replay, stale and out of order packets |
+
+`strict` defaults to **off**, which preserves the original behaviour of `gac.upd`. Turn it on when the transport cannot reorder or duplicate packets.
+
+### evidence gate
+
+before a kick or a ban, the gate can require that several **different** checks agree. repeated flags of one check never count as independent evidence.
+
+| field | default | meaning |
+|---|---|---|
+| `evon` | false | master switch, opt in |
+| `evmin` | 2 | distinct checks required inside the window |
+| `evcf` | 0.35 | minimum confidence |
+| `evwin` | 30 | evidence window, s |
+
+warnings are never gated. they are informational and blocking them would only hide a detection from the operator. a held back punishment is written to the log with level `gate`, and it is applied as soon as the evidence arrives, so the gate can delay a kick but never cancel one.
+
+### noclip
+
+| field | default | meaning |
+|---|---|---|
+| `ncsmpl` | 1 | confirmed wall crossings required before flagging |
+| `ncviol` | 2 | clean samples required to clear accumulated suspicion |
+| `nccap` | 0.05 | skin ignored at the start of the segment, m |
+| `ncahead` | 0.15 | look ahead past the end of the segment, m |
+| `nccf` | 0.5 | confidence per confirmed crossing |
+| `ncdot` | 0.1 | how squarely the surface must face the movement |
+| `ncmask` | all | layer mask of world geometry |
+| `ncloc` | false | also run on a client, see below |
+
+`gacnc` **requires authoritative world colliders**. on a dedicated server that is normal. on a client the colliders belong to the cheater, so the check stays silent unless you explicitly set `gacp.ncloc = true`, and even then client side evidence is weak. use `ncmask` to exclude player, vehicle and platform layers.
+
+### prediction
+
+`gacpred` is off by default. it is for the **rendering** of remote players, not for validation.
+
+| field | default | meaning |
+|---|---|---|
+| `prdmax` | 1 | largest correction folded in per update, m |
+| `prdmaxoff` | 3 | cap on the accumulated visual offset, m |
+| `prdrate` | 4 | how fast the offset bleeds away, per second |
+
+```csharp
+gacp.pr = true;
+
+Vector3 p = gacpred.pos(id);
+
+transform.position = p;
+```
+
+what it does and does not do:
+
+- the server model always snaps to the **reported** position, so it can never drift
+- the visual offset is capped per update by `prdmax` and overall by `prdmaxoff`
+- the offset bleeds to zero exponentially, so a correction is spread over several frames
+- a stall longer than `gacp.maxid` resets the model and clears the offset instead of snapping
+- **prediction never feeds the checks.** the detection history holds reported positions only
+
+this is why the correction cannot teleport a player and why latency alone cannot produce a flag. it is a de jitter layer, not a physics predictor: it smooths the gap between what the server last heard and what it last drew.
+
+> **`gacpred` is not a defence against a client that teleports.**
+>
+> the caps bound how far a *rendered* remote player can be dragged from what the server last received. they do **not** validate anything. if your server accepts the client's position without an authoritative check, the client can still choose where it goes and `gacpred` will faithfully smooth the jump. the limits keep other players from seeing a rubber band, they do not stop the cheat.
+>
+> a correct server needs all three of:
+>
+> 1. `gacp.srv = true` and `gac.upd2` or `gacsrv.up` on the receiving side, so the checks see the reported stream at all
+> 2. authoritative world colliders on the server, otherwise `gacnc` cannot see a wall crossing
+> 3. your own authority decision, for example a swept shape cast that resolves the player against the server world and sends back a corrected position. `gacpred` renders that decision, it does not make it
+>
+> if you have none of these, treat the server side checks as telemetry only, exactly like the client side ones.
+
+### logging and diagnostics
+
+| field | default | meaning |
+|---|---|---|
+| `logon` | true | record structured events |
+| `loglim` `logwin` | 8, 10 | records per player per window |
+| `logkeep` | 512 | ring size |
+| `logn` | false | also record per packet network events, off by default because it runs on every lost packet |
+
+```csharp
+string report = gacdiag.txt();     // full text report
+string csv = gacdiag.csv();        // event log as csv
+bool ok = gacdiag.save("diag.txt");
+```
+
+`loglim` protects against a cheater flooding the log. warnings, kicks, bans and held back punishments are never rate limited away, because losing those would hide the important part. the limit is per player, so one flooder cannot starve the rest.
+
+all numbers are formatted with the invariant culture, so a comma decimal separator cannot corrupt the csv.
+
+### switching checks
+
 ```csharp
 gacp.sw("speed");
 gac.sync();
@@ -188,6 +304,23 @@ gacs.onwarning = e => { };
 gacs.onban = e => { };
 gacs.onkick = e => { };
 ```
+
+`gace` is a struct, so the lambdas above box on every call. for a hot path, or when you need more than one listener, implement `igace` and bind it. this does not allocate:
+
+```csharp
+public sealed class mysink : igace
+{
+    public void onflag(gace e) { }
+    public void onwarning(gace e) { }
+    public void onkick(gace e) { }
+    public void onban(gace e) { }
+}
+
+gacs.bind(new mysink());
+gacs.unbind(sink);
+```
+
+the structured log is itself an `igace`, bound automatically, so `gaclog` keeps working no matter what you do with the lambdas.
 
 ---
 
@@ -241,12 +374,34 @@ server receives and validates:
 ```csharp
 gacsrv.init();
 
+gacsrv.seq(true);          // opt in to replay and stale rejection
+
 gacsrv.join(id);
-gacsrv.up(id, position, velocity, isGrounded, clientTime);
+bool ok = gacsrv.up(id, position, velocity, isGrounded, clientTime);
 gacsrv.leave(id);
 ```
 
+`gacsrv.up` returns whether the packet was accepted. `join` is optional, an unannounced id is registered on its first packet, which is what a real server sees when the handshake is still in flight. a kicked or banned id is refused at every entry point, and `gacsrv.rtt(id, rtt)` feeds the per player ping.
+
 `gac.upd` validates position, velocity, movement delta, timestamps and player state on the receiving side, then `gacr` picks the punishment. kicked and banned players are rejected through `gac.st(id)`.
+
+for full sequence and timestamp validation, use `gac.upd2`:
+
+```csharp
+bool ok = gac.upd2(id, position, velocity, isGrounded, sequence, clientTime);
+```
+
+`upd2` rejects replayed, stale and future packets, learns the client's clock offset, and measures jitter and loss to widen the tolerances automatically. a large **forward** sequence gap is accepted and counted as loss rather than rejected, because muting an honest player after a stall buys no security. backward movement is only rejected when `gacp.strict` is on, which preserves the original behaviour of `gac.upd`.
+
+tell the server about measured latency:
+
+```csharp
+gac.ping(id, rtt);
+gac.dropped(id);
+gac.outoforder(id);
+```
+
+ping is stored per player, so one slow player never loosens everyone else, and an implausible rtt is capped by `gacp.pingmax`.
 
 server ban storage:
 
@@ -292,6 +447,8 @@ photon, fusion, normcore, netcode for gameobjects and mirror all fit behind this
 
 - every check needs several consecutive samples, never a single frame verdict
 - burst tolerance `gacp.burst` for gorilla locomotion swings and rope physics
+- network aware tolerances, ping, jitter and loss widen the limits per player
+- optional evidence gate, a punishment can wait for independent checks to agree
 - `gacgrav` uses the ballistic model plus velocity, never raw `position.y`
 - `gacfly` ignores rising, falling and travelling states
 - gravity, speed, velocity and position checks suspend themselves while grabbing, climbing or swinging
@@ -318,6 +475,25 @@ gac.me.st(character.IsGrounded, character.JumpPressed, character.Climbing, chara
 - `Vector3` math only, no allocations for distance or damping
 - one ground `Physics.CheckSphere` per interval, not per frame
 - events and debug output are opt in
+- **zero bytes allocated per tick**, verified by test
+
+the allocation behaviour is pinned by tests rather than asserted in prose. `Tests/perf.cs` measures `GC.GetAllocatedBytesForCurrentThread` across 2000 updates and requires exactly zero bytes for:
+
+- a clean network stream
+- a cheating player, every frame, before the kick
+- a player after the kick, where `p.sent` short circuits **before** any string is built
+- the whole local path, `smp` plus all twelve checks
+- the same stream with `gacpred` on
+- a lossy link with jitter
+
+that last one is why per packet network logging is behind `gacp.logn` and defaults to off: it runs on every lost packet, on every player, and scales with packet loss rather than with cheating.
+
+how it is achieved:
+
+- flag reasons are formatted **after** `gacr.canflg` accepts the flag. the cheap guards, `p.sent` and the per check cooldown, run first, so a rejected flag costs no string at all
+- debug strings are built only inside `if (gacp.dbgo())`
+- the player table is capped at `gacp.slots` and evicts cleanly
+- structured events go through `igace` instead of `Action<gace>`, which avoids boxing the struct
 
 ---
 
@@ -341,21 +517,31 @@ gtagac/
   readme.md
   license
   changelog.md
+  migration.md
   package.json
   runtime/
     gtagac.asmdef
-    core/        gac.cs gacp.cs gacf.cs gacper.cs gacr.cs gacev.cs gacm.cs gacgui.cs gacdw.cs
+    core/        gac.cs gacp.cs gacf.cs gacper.cs gacr.cs gacev.cs gacsq.cs
+                 gacpred.cs gacm.cs gacgui.cs gacdw.cs
     checks/      gaccheck.cs gacspd.cs gactp.cs gacjmp.cs gacfly.cs
                  gacgrav.cs gacvel.cs gacarm.cs gacpos.cs gaccon.cs
-                 gacrat.cs gacenv.cs
+                 gacnc.cs gacrat.cs gacenv.cs
     data/        gacd.cs gacv.cs
-    util/        gaclog.cs gactime.cs gacmath.cs
+    util/        gaclog.cs gacdiag.cs gactime.cs gacmath.cs
     net/         igacnet.cs
     ban/         gacbm.cs gacban.cs
     server/      gacsrv.cs
   samples~/
     gacboot.cs gacnetex.cs gtagac.smp.asmdef
+  Tests/         gtagac.tests.asmdef, shared tests
+  dev/           headless test runner, dotnet test
 ```
+
+---
+
+## upgrading from 1.0.1
+
+see `migration.md`. in short: the code compiles as is, detection becomes about one flag sooner because a bug that swallowed the first flag of every check is fixed, and four things you may have relied on were weaker than they looked. raising `fth`, `kth` and `bth` by one restores the previous cadence.
 
 ---
 
@@ -363,9 +549,58 @@ gtagac/
 
 mit, see `license`.
 
+## tests
+
+211 tests, nunit is a **dev dependency only** and never enters the runtime assembly.
+
+```
+Tests/                shared, run in unity test runner and headless
+  harness.cs          simulation helpers and the shared legit scenario set, no assertions
+  baseline.cs         the original behaviour still holds
+  seq.cs              sequence, staleness, clock offset, legacy upd
+  legit.cs            walk, fast walk, jump, climb, swing, jitter, fall, collision push
+  netfp.cs            clean, jitter, loss, loss plus jitter, stall, strict on and off
+  exploits.cs         speed, teleport, fly, gravity, jump, rate, config, acceleration
+  srv.cs              join and leave, timestamps, sequences, kick and ban re-entry, slot cap
+  noclip.cs           wall crossing in both directions, back faces, grace, mask
+  noclipfp.cs         a sweep that trips only the wall check, and the same sweep in an empty world
+  gate.cs             evidence gate, single versus multiple exploits, false positives
+  evidence.cs         flag counter semantics, independence, decay, window
+  pred.cs             prediction under ping, loss, sharp turns, gorilla locomotion
+  anticheat.cs        prediction never hides a reported teleport from the checks
+  rope.cs             energy consistent rope lengths and swings, speedhacks still caught
+  thresh.cs           the first flag fix, threshold sensitivity, no new false positives
+  diag.cs             an impossible sample that must be caught
+  diaglog.cs          ring buffer, rate limiting, csv, culture independence
+  perf.cs             zero allocation per tick, bounded tables, event sinks
+dev/                  headless runner, dotnet test
+  tests.csproj
+  UnityStub.cs        minimal UnityEngine shim, enables the same tests outside unity
+```
+
+run headless:
+
+```
+cd dev
+dotnet test
+```
+
+or let unity run them, the `Tests` assembly is editor only and guarded by `UNITY_INCLUDE_TESTS`.
+
+two suites exist on purpose. `legit`, `netfp` and `noclipfp` must always produce **zero** flags, they are the false positive guard. `gate` and `thresh` additionally check that real exploits are still caught, so the suite fails both if a check gets too timid and if it gets too noisy.
+
+the legitimate scenario set lives in one place, `tst.legit()`, so a new check cannot be added without being proven against the whole set.
+
+### a note on `gacf.add`
+
+the flag counter used to create a new entry with `n = 0`, so the first flag of any check was never counted. every threshold was effectively reached one flag late. it is fixed and pinned by `Tests/thresh.cs`, and the same file verifies that the resulting earlier threshold does not introduce a single false positive across the legit scenarios, a bad wifi link and a frozen stream.
+
+this shifts every threshold slightly earlier, i.e. detection is marginally more sensitive than in 1.0.1. raising `fth`, `kth` and `bth` by one restores the previous cadence exactly. see `migration.md`.
+
+---
+
 ## roadmap
 
-- physics consistency check, predicted position versus reported position
 - rotation and angular velocity check
 - anim and rig integrity signals from the networking layer
 - per check statistical thresholds learned from the server baseline

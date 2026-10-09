@@ -68,8 +68,8 @@ namespace gtagac
                 if (used >= cap) i = 0;
                 else i = used++;
                 e[i].chk = chk;
-                e[i].n = 0;
-                e[i].cnt = 0f;
+                e[i].n = n;
+                e[i].cnt = n;
                 e[i].w = w;
                 e[i].cf = 0f;
                 e[i].t = t;
@@ -139,6 +139,26 @@ namespace gtagac
             for (int i = 0; i < used; i++)
             {
                 if (e[i].n > 0 && t - e[i].t <= w) s++;
+            }
+            return s;
+        }
+
+        public int ind(float t, float w)
+        {
+            int s = 0;
+            for (int i = 0; i < used; i++)
+            {
+                if (t - e[i].t <= w) s++;
+            }
+            return s;
+        }
+
+        public int ncf()
+        {
+            int s = 0;
+            for (int i = 0; i < used; i++)
+            {
+                if (e[i].n > 0) s++;
             }
             return s;
         }

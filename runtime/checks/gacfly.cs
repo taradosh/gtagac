@@ -4,6 +4,8 @@ namespace gtagac
 {
     public sealed class gacfly : gacc
     {
+        readonly float[] hov = new float[gacp.slots];
+
         public gacfly()
         {
             nm = "fly";
@@ -13,12 +15,16 @@ namespace gtagac
 
         public override void tick(gacd d, float dt)
         {
+            int x = d.ind;
+
+            if (x < 0 || x >= gacp.slots) return;
             if (d.clb || d.swm || d.grb) return;
 
             if (d.ingnd())
             {
                 d.air = 0f;
                 d.fy = false;
+                hov[x] = 0f;
                 return;
             }
 
@@ -27,6 +33,7 @@ namespace gtagac
             if (d.air <= gacp.maxair)
             {
                 d.fy = false;
+                hov[x] = 0f;
                 return;
             }
 
@@ -34,20 +41,21 @@ namespace gtagac
             float dlt = d.h.dlt(0);
             float sp = gacmath.flen(d.h.now - d.h.at(1)) / (dlt > gacp.minid ? dlt : gacp.minid);
 
-            bool rise = vy > gacp.hov;
-            bool fall = vy < -gacp.hov;
-            bool move = sp > gacp.maxspeed * 0.4f;
+            bool still = vy > -gacp.hov && vy < gacp.hov && sp < gacp.maxspeed * 0.4f;
 
-            if (rise || fall || move) return;
+            hov[x] = still ? hov[x] + dt : 0f;
+
+            if (hov[x] < gacp.flyhold) return;
 
             float ov = gacmath.over(d.air, gacp.maxair);
             float cf = gacmath.cl01(ov * 0.35f);
 
             if (cf < 0.15f) return;
 
+            hov[x] = 0f;
             d.fy = true;
 
-            flg(d, cf, "air " + d.air.ToString("0.0"));
+            flg(d, cf, d.air, "air", "0.0");
         }
     }
 }

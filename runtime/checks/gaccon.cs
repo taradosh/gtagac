@@ -21,12 +21,30 @@ namespace gtagac
             if (x < 0 || x >= gacp.slots) return;
             if (d.h.n < 3) return;
             if (d.grb) return;
+            if (d.grnd) return;
+            if (d.clb || d.swm) return;
 
             float d0 = d.h.dlt(0);
             float d1 = d.h.dlt(1);
 
             if (d0 <= gacp.minid || d1 <= gacp.minid) return;
             if (d0 > gacp.maxid || d1 > gacp.maxid) return;
+            if (d.unc > gacp.conunc) return;
+
+            float mn = gacp.maxid;
+            float mx = gacp.minid;
+
+            for (int i = 0; i < 4; i++)
+            {
+                float q = d.h.dlt(i);
+
+                if (q <= gacp.minid || q > gacp.maxid) return;
+
+                if (q < mn) mn = q;
+                if (q > mx) mx = q;
+            }
+
+            if (mx > mn * gacp.conratio) return;
 
             Vector3 r0 = (d.h.at(0) - d.h.at(1)) / d0;
             Vector3 r1 = (d.h.at(1) - d.h.at(2)) / d1;
@@ -47,7 +65,7 @@ namespace gtagac
 
             cnt[x] = 0f;
 
-            flg(d, cf, "acc " + dev[x].ToString("0"));
+            flg(d, cf, dev[x], "acc", "0");
         }
     }
 }

@@ -43,7 +43,7 @@ namespace gtagac
                 if (cv >= 2)
                 {
                     cv = 0;
-                    flg(d, 0.8f, "scale " + t.ToString("0.00"));
+                    flg(d, 0.8f, t, "scale", "0.00");
                 }
                 return;
             }
@@ -52,7 +52,7 @@ namespace gtagac
 
             if (an <= 0.25f) return;
 
-            flg(d, an, "time " + gactime.dt.ToString("0.000"));
+            flg(d, an, gactime.dt, "time", "0.000");
         }
     }
 }
